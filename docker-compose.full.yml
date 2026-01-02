@@ -1,0 +1,114 @@
+# Full Stack: MaverickMCP + Open WebUI + Ollama + PostgreSQL + Redis
+# Usage: docker compose -f docker-compose.full.yml up -d
+#
+# This deploys everything needed for a complete self-hosted stock analysis chat.
+
+services:
+  # MaverickMCP Server - Stock Analysis Tools
+  mcp:
+    image: ghcr.io/wshobson/maverick-mcp:latest
+    container_name: maverick-mcp
+    ports:
+      - "${MCP_PORT:-8003}:8003"
+    environment:
+      MAVERICK_TRANSPORT: streamable-http
+      MAVERICK_HOST: 0.0.0.0
+      MAVERICK_PORT: 8003
+      TIINGO_API_KEY: ${TIINGO_API_KEY:?Required for stock data}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      EXA_API_KEY: ${EXA_API_KEY:-}
+      DATABASE_URL: postgresql://postgres:${DB_PASSWORD:-maverick}@postgres:5432/maverick
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8003/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Open WebUI - Chat Interface
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: maverick-webui
+    ports:
+      - "${WEBUI_PORT:-3001}:8080"
+    environment:
+      WEBUI_SECRET_KEY: ${WEBUI_SECRET_KEY:?Required - run: openssl rand -base64 32}
+      OLLAMA_BASE_URL: http://ollama:11434
+      ENABLE_SIGNUP: ${ENABLE_SIGNUP:-false}
+      DEFAULT_USER_ROLE: ${DEFAULT_USER_ROLE:-user}
+      WEBUI_AUTH: "true"
+    volumes:
+      - webui-data:/app/backend/data
+    depends_on:
+      - mcp
+      - ollama
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Ollama - Local LLM Runtime
+  ollama:
+    image: ollama/ollama:latest
+    container_name: maverick-ollama
+    ports:
+      - "${OLLAMA_PORT:-11434}:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    restart: unless-stopped
+    # Uncomment for NVIDIA GPU support:
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
+  # PostgreSQL - Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: maverick-postgres
+    environment:
+      POSTGRES_DB: maverick
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-maverick}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Redis - Caching
+  redis:
+    image: redis:7-alpine
+    container_name: maverick-redis
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  webui-data:
+    name: maverick-webui-data
+  ollama-data:
+    name: maverick-ollama-data
+  postgres-data:
+    name: maverick-postgres-data
+  redis-data:
+    name: maverick-redis-data
