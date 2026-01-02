@@ -1,6 +1,6 @@
 # Maverick Open WebUI
 
-Deploy [Open WebUI](https://openwebui.com) as a self-hosted ChatGPT-like interface for [MaverickMCP](https://github.com/wshobson/maverick-mcp) stock analysis tools.
+Deploy [Open WebUI](https://openwebui.com) as a self-hosted ChatGPT-like interface for [MaverickMCP](https://github.com/arunbcodes/maverick-mcp) stock analysis tools.
 
 ## Architecture
 
@@ -23,44 +23,83 @@ Deploy [Open WebUI](https://openwebui.com) as a self-hosted ChatGPT-like interfa
 ### Prerequisites
 
 - Docker and Docker Compose
-- [MaverickMCP](https://github.com/wshobson/maverick-mcp) server (for standalone mode)
+- [MaverickMCP](https://github.com/arunbcodes/maverick-mcp) server running locally (for standalone mode)
 - Tiingo API key (free at [tiingo.com](https://tiingo.com))
 
 ### Option 1: Standalone (Open WebUI only)
 
-Use this if you already have MaverickMCP running.
+Use this when running MaverickMCP natively (not in Docker).
+
+**Step 1: Start MaverickMCP first**
 
 ```bash
-# Clone this repo
-git clone https://github.com/abalak/maverick-openwebui.git
-cd maverick-openwebui
+# Clone MaverickMCP if you haven't already
+git clone https://github.com/arunbcodes/maverick-mcp.git
+cd maverick-mcp
+
+# Install and start with HTTP Streamable transport (required for Open WebUI)
+uv sync
+make dev-http
+# Or: python -m maverick_server --transport streamable-http --port 8003
+```
+
+**Step 2: Start Open WebUI**
+
+```bash
+cd ../maverick-openwebui
 
 # Setup and start
 ./scripts/setup.sh standalone
 ```
 
-Then configure MCP connection in Open WebUI:
+**Step 3: Configure MCP connection in Open WebUI**
+
 1. Open http://localhost:3001
 2. Create admin account
 3. Go to **Admin Settings** → **External Tools**
-4. Add MCP server: `http://host.docker.internal:8003/mcp/`
+4. Click **+ Add Server**
+5. Configure:
+   - **Type**: MCP (Streamable HTTP)
+   - **URL**: `http://host.docker.internal:8003/mcp/`
+   - **Name**: MaverickMCP
+6. Go to a chat, enable **Function Calling** → **Native** in model settings
 
-### Option 2: Full Stack (Everything)
+### Option 2: Full Stack (Everything in Docker)
 
-Deploys MaverickMCP + Open WebUI + Ollama + PostgreSQL + Redis.
+Deploys MaverickMCP + Open WebUI + Ollama + PostgreSQL + Redis all in Docker.
+
+**Step 1: Clone repos and configure**
 
 ```bash
-# Clone this repo
-git clone https://github.com/abalak/maverick-openwebui.git
+# Clone MaverickMCP alongside this repo
+git clone https://github.com/arunbcodes/maverick-mcp.git ../maverick-mcp
+
 cd maverick-openwebui
 
-# Configure
+# Configure environment
 cp .env.example .env
-# Edit .env and add TIINGO_API_KEY
+# Edit .env and add TIINGO_API_KEY (required)
+```
 
-# Start full stack
+**Step 2: Start full stack**
+
+```bash
 ./scripts/setup.sh full
 ```
+
+**Step 3: Configure MCP connection in Open WebUI**
+
+1. Open http://localhost:3001
+2. Create admin account
+3. Go to **Admin Settings** → **External Tools**
+4. Click **+ Add Server**
+5. Configure:
+   - **Type**: MCP (Streamable HTTP)
+   - **URL**: `http://mcp:8003/mcp/` (use container name, not localhost)
+   - **Name**: MaverickMCP
+6. Enable **Function Calling** → **Native** in model settings
+
+> **Note**: Full stack mode builds [MaverickMCP](https://github.com/arunbcodes/maverick-mcp) from local source at `../maverick-mcp`. Set `MCP_BUILD_CONTEXT` in `.env` if your maverick-mcp is in a different location.
 
 ## Configuration
 
@@ -130,15 +169,23 @@ Import these in Open WebUI → Settings → Personalization.
 
 ## MCP Connection Setup
 
-After starting Open WebUI:
+After starting Open WebUI, configure the MCP connection:
 
 1. Go to **Admin Settings** → **External Tools**
 2. Click **+ Add Server**
 3. Configure:
    - **Type**: MCP (Streamable HTTP)
-   - **URL**: `http://host.docker.internal:8003/mcp/` (Docker) or `http://localhost:8003/mcp/` (native)
    - **Name**: MaverickMCP
+   - **URL**: (see table below)
+
+| Deployment | MaverickMCP Location | MCP URL |
+|------------|---------------------|---------|
+| **Standalone** | Running natively on host | `http://host.docker.internal:8003/mcp/` |
+| **Full Stack** | Running in Docker | `http://mcp:8003/mcp/` |
+
 4. Enable **Function Calling** → **Native** in model settings
+
+> **Important**: MaverickMCP must be running with `--transport streamable-http` for Open WebUI to connect.
 
 ## Testing
 
@@ -196,7 +243,7 @@ Consider adding:
 
 ## Related Projects
 
-- [MaverickMCP](https://github.com/wshobson/maverick-mcp) - Stock analysis MCP server
+- [MaverickMCP](https://github.com/arunbcodes/maverick-mcp) - Stock analysis MCP server (clone to `../maverick-mcp`)
 - [Open WebUI](https://github.com/open-webui/open-webui) - Self-hosted ChatGPT interface
 - [Ollama](https://ollama.com) - Local LLM runtime
 

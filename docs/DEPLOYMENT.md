@@ -1,10 +1,10 @@
 # Open WebUI Deployment Guide
 
-Deploy Open WebUI as a self-hosted ChatGPT-like interface for MaverickMCP.
+Deploy Open WebUI as a self-hosted ChatGPT-like interface for [MaverickMCP](https://github.com/arunbcodes/maverick-mcp).
 
 ## Overview
 
-Open WebUI provides a web-based chat interface that connects to MaverickMCP's 80+ stock analysis tools via the Model Context Protocol (MCP).
+Open WebUI provides a web-based chat interface that connects to [MaverickMCP's](https://github.com/arunbcodes/maverick-mcp) 80+ stock analysis tools via the Model Context Protocol (MCP).
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -25,13 +25,14 @@ Open WebUI provides a web-based chat interface that connects to MaverickMCP's 80
 ### Prerequisites
 
 - Docker and Docker Compose installed
-- MaverickMCP server running (port 8003)
+- [MaverickMCP](https://github.com/arunbcodes/maverick-mcp) server running (port 8003)
 - LLM backend (Ollama or API key)
 
 ### Step 1: Start MaverickMCP
 
 ```bash
-# In the maverick-mcp repository
+# Clone and start MaverickMCP (https://github.com/arunbcodes/maverick-mcp)
+cd ../maverick-mcp
 make dev-http
 # Or: python -m maverick_server --transport streamable-http --port 8003
 ```
@@ -39,8 +40,6 @@ make dev-http
 ### Step 2: Start Open WebUI
 
 ```bash
-# Clone this repository
-git clone https://github.com/arunbcodes/maverick-openwebui.git
 cd maverick-openwebui
 
 # Run setup
@@ -55,8 +54,10 @@ cd maverick-openwebui
 4. Click **+ Add Server**
 5. Configure:
    - **Type**: MCP (Streamable HTTP)
-   - **URL**: `http://host.docker.internal:8003/mcp/`
+   - **URL**: `http://host.docker.internal:8003/mcp/` (MaverickMCP running natively)
    - **Name**: MaverickMCP
+
+> **Note**: Use `http://mcp:8003/mcp/` if using Full Stack mode (MaverickMCP in Docker).
 
 ### Step 4: Start Chatting!
 
@@ -128,16 +129,23 @@ docker compose up -d
 Use `docker-compose.full.yml` to run everything together:
 
 ```bash
+# Clone MaverickMCP if not already done
+git clone https://github.com/arunbcodes/maverick-mcp.git ../maverick-mcp
+
+cd maverick-openwebui
+
 # Configure environment
 cp .env.example .env
 # Edit .env and add TIINGO_API_KEY, WEBUI_SECRET_KEY
 
-# Start full stack
+# Start full stack (builds MaverickMCP from ../maverick-mcp)
 docker compose -f docker-compose.full.yml up -d
 
 # Pull a model for Ollama
 docker exec maverick-ollama ollama pull llama3.2:3b
 ```
+
+> **Note**: Set `MCP_BUILD_CONTEXT` in `.env` if your maverick-mcp is in a different location.
 
 This deploys:
 - MaverickMCP Server (port 8003)
@@ -253,4 +261,4 @@ services:
 - [Open WebUI Documentation](https://docs.openwebui.com/)
 - [Open WebUI MCP Guide](https://docs.openwebui.com/features/mcp/)
 - [Ollama Model Library](https://ollama.com/library)
-- [MaverickMCP Repository](https://github.com/wshobson/maverick-mcp)
+- [MaverickMCP](https://github.com/arunbcodes/maverick-mcp) - Stock analysis server (clone to `../maverick-mcp`)

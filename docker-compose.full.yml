@@ -2,11 +2,18 @@
 # Usage: docker compose -f docker-compose.full.yml up -d
 #
 # This deploys everything needed for a complete self-hosted stock analysis chat.
+#
+# Prerequisites:
+#   - Clone maverick-mcp repo alongside this repo (../maverick-mcp)
+#   - Or set MCP_BUILD_CONTEXT environment variable to the maverick-mcp path
 
 services:
   # MaverickMCP Server - Stock Analysis Tools
   mcp:
-    image: ghcr.io/wshobson/maverick-mcp:latest
+    build:
+      context: ${MCP_BUILD_CONTEXT:-../maverick-mcp}
+      dockerfile: Dockerfile
+    image: maverick-mcp:local
     container_name: maverick-mcp
     ports:
       - "${MCP_PORT:-8003}:8003"
